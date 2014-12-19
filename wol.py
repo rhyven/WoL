@@ -3,9 +3,10 @@
 __author__ = 'Eric Light'
 __copyright__ = "Copyleft 2014, Eric Light"
 __license__ = "GPLv3"
-__version__ = "2014-12-19 (v0.9)"
+__version__ = "2014-12-20 (v0.9b)"
 __maintainer__ = "Eric Light"
-__credits__ = "Original written by San Bergmans, www.sbprojects.com"
+__credits__ = "Original written by San Bergmans, www.sbprojects.com\n"
+__credits__ += "Ron Collinson <notthinking at gmail dot com>"
 __email__ = "eric@ericlight.com"
 __status__ = "Production"
 
@@ -18,6 +19,7 @@ UDP_PORT = 9
 # TODO - Make broadcast IP's specified at command-line work
 '''
     Changelog:
+    2014-12-20 (Eric Light):  Updated build_magic_packet to remove ugly hack and replace with Ron Collinson's method
     2014-12-19 (Eric Light):  Split structure out into functions; added commenting
     2014-12-19 (Eric Light):  Removed 'known computers' functionality, merged broadcast functionality back in
     2014-12-19 (Eric Light):  Added logic & regular expressions to confirm user-provided strings are valid MACs
@@ -39,18 +41,11 @@ def build_magic_packet(ethernet_address):
     Returns the magic packet for the target machine, prepared for sending
     """
 
-
-    # Split ethernet_address into a list of 6x bytes
-    from struct import pack
-
-    # The following terrible line does the following:
-    # - Splits the ethernet_address string out into a list of six byte-like strings
-    # - Packs these byte-like strings into a list of actual bytes
-    # - Joins this list of bytes together into a single byte string, with the format b'\xnn...'
-    hardware_address = b''.join([pack('B', int(i,16)) for i in [ethernet_address[i:i+2] for i in range(0, len(ethernet_address), 2)]])
+    # Convert the ethernet_address string into a byte array  (thanks, Ron Collinson!)
+    ethernet_address = bytes(bytearray.fromhex(ethernet_address))
 
     # Return magic packet
-    return b'\xff' * 6 + hardware_address * 16
+    return b'\xff' * 6 + ethernet_address * 16
 
 
 def send_wol_message(wol_message):
