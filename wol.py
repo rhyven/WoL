@@ -3,7 +3,7 @@
 __author__ = 'Eric Light'
 __copyright__ = "Copyleft 2014, Eric Light"
 __license__ = "GPLv3"
-__version__ = "2014-12-15 (v0.9)"
+__version__ = "2014-12-19 (v0.9)"
 __maintainer__ = "Eric Light"
 __credits__ = "Original written by San Bergmans, www.sbprojects.com"
 __email__ = "eric@ericlight.com"
