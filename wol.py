@@ -68,7 +68,6 @@ def send_wol_message(wol_message):
 
     # Sent the magic packet via every item in the BROADCAST list
     for source_ip in BROADCAST:
-        print(source_ip)
         soc.sendto(wol_message, (source_ip, UDP_PORT))
     soc.close()
 
