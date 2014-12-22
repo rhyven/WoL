@@ -3,7 +3,7 @@
 __author__ = 'Eric Light'
 __copyright__ = "Copyleft 2014, Eric Light"
 __license__ = "GPLv3"
-__version__ = "2014-12-20 (v0.9b)"
+__version__ = "2014-12-22 (v1.0)"
 __maintainer__ = "Eric Light"
 __credits__ = "Original written by San Bergmans, www.sbprojects.com\n"
 __credits__ += "Ron Collinson <notthinking at gmail dot com>"
@@ -19,6 +19,7 @@ UDP_PORT = 9
 # TODO - Make broadcast IP's specified at command-line work
 '''
     Changelog:
+    2014-12-22 (Eric Light):  No longer beta!  I've been using it in production for a few days now and it seems solid.
     2014-12-22 (Eric Light):  Made it into a class, so it can be imported and used elsewhere.
     2014-12-20 (Eric Light):  Updated build_magic_packet to remove ugly hack and replace with Ron Collinson's method
     2014-12-19 (Eric Light):  Split structure out into functions; added commenting
