@@ -19,6 +19,7 @@ UDP_PORT = 9
 # TODO - Make broadcast IP's specified at command-line work
 '''
     Changelog:
+    2014-12-22 (Eric Light):  Made it into a class, so it can be imported and used elsewhere.
     2014-12-20 (Eric Light):  Updated build_magic_packet to remove ugly hack and replace with Ron Collinson's method
     2014-12-19 (Eric Light):  Split structure out into functions; added commenting
     2014-12-19 (Eric Light):  Removed 'known computers' functionality, merged broadcast functionality back in
@@ -29,116 +30,113 @@ UDP_PORT = 9
 
 '''
 
-from argparse import ArgumentParser
 
+class WakeOnLan:
 
-def build_magic_packet(ethernet_address):
-    """
-    Constructs the magic packet to wake the target machine.
+    def __init__(self, target=None):
+        if not target is None:
+            print("Waking MAC %s" % target)
+            target = self.remove_separators(target)
+            if self.mac_is_ok(target):
+                print("Target %s seems to be ok; sending magic packet." % target)
+                self.send_wol_message(target)
+                print("Wake on Lan packet sent to %s" % target)
+            else:
+                raise ValueError("Validation of the MAC address failed; it doesn't appear to be a valid MAC.")
 
-    A magic packet consists of six \xff bytes, followed by sixteen repetitions of the target mac address.
+    def send_wol_message(self, ethernet_address):
+        """
+        Constructs and broadcasts the magic packet, to wake the target machine.
 
-    Returns the magic packet for the target machine, prepared for sending
-    """
+        A magic packet consists of six \xff bytes, followed by sixteen repetitions of the target mac address.
 
-    # Convert the ethernet_address string into a byte array  (thanks, Ron Collinson!)
-    ethernet_address = bytes(bytearray.fromhex(ethernet_address))
+        """
 
-    # Return magic packet
-    return b'\xff' * 6 + ethernet_address * 16
+        # Convert the ethernet_address string into a byte array  (thanks, Ron Collinson!)
+        magic_packet = b'\xff' * 6 + bytes(bytearray.fromhex(ethernet_address)) * 16
 
+        # Set up the network socket
+        import socket
+        soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        soc.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-def send_wol_message(wol_message):
-    """
-    Sends the magic packet to every broadcast address in the BROADCAST list, using socket.sendto()
-    """
+        # Send the magic packet via every item in the BROADCAST list
+        for source_ip in BROADCAST:
+            soc.sendto(magic_packet, (source_ip, UDP_PORT))
+        soc.close()
 
+    def mac_is_ok(self, mac_to_check):
+        """
+        Checks the length and contents of a given string to confirm it is a valid format for a MAC address
 
-    # Send packet to broadcast address using UDP port 9
-    import socket
+        Expects to receive a hexadecimal string, 12 characters long, with no separators (e.g. colons or hyphens)
 
-    # Set up the network socket
-    soc = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    soc.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        Returns False if the string is not 12 characters long
+        Returns False if the string does not match the expected regex
+        Otherwise, returns True, indicating a valid MAC address
 
-    # Sent the magic packet via every item in the BROADCAST list
-    for source_ip in BROADCAST:
-        soc.sendto(wol_message, (source_ip, UDP_PORT))
-    soc.close()
+        """
 
+        #Ensure the length of the MAC is correct
+        if len(mac_to_check) != 12:
+            print("Provided MAC %s is an incorrect length - %s characters long" % (mac_to_check, len(mac_to_check)))
+            return False
 
-def parse_arguments():
-    """
-    Parses arguments, returns version if appropriate, otherwise returns a list of arguments
-    """
+        # Check MAC against regex
+        from re import match
+        if not (match(MAC_REGEX, mac_to_check)):
+            print("Failed regex")
+            return False
 
-    parser = ArgumentParser(description="Sends a Wake-On-LAN Packet to a given set of MAC addresses or host names",
-                            epilog="A MAC address must be in the form of either a 12-digit hexadecimal string, "
-                                   "or a 17-digit hexadecimal string separated by either : or - characters.")
-    parser.add_argument('-v', '--verbose', action='count', help="print more detailed progress messages")
-    parser.add_argument('--version', action='version', version='WoL version %s' % __version__)
-    parser.add_argument('-b', dest='broadcast', help='specify a broadcast address. '
-                                                     'Defaults to %(default)s', default=BROADCAST)
-    parser.add_argument('target_macs', nargs='+', help='a space-delimited list of MAC addresses to wake')
+        # If we get here, mac_to_check is a 12-digit hexadecimal number, so it's probably a well-formed MAC address
+        return True
 
-    return parser.parse_args()
+    def remove_separators(self, mac):
+        """
+        Takes a MAC address, and returns the same string without separator characters : or -
+        """
 
-
-def mac_is_ok(mac_to_check):
-    """
-    Checks the length and contents of a given string to confirm it is a valid format for a MAC address
-
-    Expects to receive a hexadecimal string, 12 characters long, with no separators (e.g. colons or hyphens)
-
-    Returns False if the string is not 12 characters long
-    Returns False if the string does not match the expected regex
-    Otherwise, returns True, indicating a valid MAC address
-
-    """
-
-    #Ensure the length of the MAC is correct
-    if len(mac_to_check) != 12:
-        print("Provided MAC %s is an incorrect length - %s characters long" % (mac_to_check, len(mac_to_check)))
-        return False
-
-    # Check MAC against regex
-    from re import match
-    if not (match(MAC_REGEX, mac_to_check)):
-        print("Failed regex")
-        return False
-
-    # If we get here, mac_to_check is a 12-digit hexadecimal number, so it's probably a well-formed MAC address
-    return True
-
-
-def remove_separators(mac):
-    """
-    Takes a MAC address, and returns the same string without separator characters : or -
-    """
-
-    mac = mac.replace(":", "")
-    mac = mac.replace("-", "")
-    return mac
+        mac = mac.replace(":", "")
+        mac = mac.replace("-", "")
+        return mac.lower()
 
 
 if __name__ == "__main__":
+
+    def parse_arguments():
+        """
+        Parses arguments, returns version if appropriate, otherwise returns a list of arguments
+        """
+
+        from argparse import ArgumentParser
+
+        parser = ArgumentParser(description="Sends a Wake-On-LAN Packet to a given set of MAC addresses or host names",
+                                epilog="A MAC address must be in the form of either a 12-digit hexadecimal string, "
+                                       "or a 17-digit hexadecimal string separated by either : or - characters.")
+        parser.add_argument('-v', '--verbose', action='count', help="print more detailed progress messages")
+        parser.add_argument('--version', action='version', version='WoL version %s' % __version__)
+        parser.add_argument('-b', dest='broadcast', help='specify a broadcast address. '
+                                                         'Defaults to %(default)s', default=BROADCAST)
+        parser.add_argument('target_macs', nargs='+', help='a space-delimited list of MAC addresses to wake')
+
+        return parser.parse_args()
+
     cli_args = parse_arguments()
+
+    app = WakeOnLan()
     #TODO - parse cli_args.broadcast here
 
     # Check each provided argument to ensure it's a correctly-formatted MAC address
     for target_mac in cli_args.target_macs:
 
         # Strip out separators : or -, and convert to lower case
-        stripped_mac = remove_separators(target_mac.lower())
+        stripped_mac = app.remove_separators(target_mac)
 
         # Check the MAC against a regular expression (MAC_REGEX) to confirm that it's actually a valid format
-        if mac_is_ok(stripped_mac):
+        if app.mac_is_ok(stripped_mac):
             print("Sending magic packet to %s." % stripped_mac)
-            # Construct the magic packet with the MAC address
-            magic_packet = build_magic_packet(stripped_mac)
-
-            # Push the magic packet out onto the broadcast IP
-            send_wol_message(magic_packet)
+            # Construct the magic packet with the MAC address, and push the magic packet out onto the broadcast IP
+            app.send_wol_message(stripped_mac)
 
         else:
             print("%s does not look like a valid MAC address; skipping." % target_mac)
